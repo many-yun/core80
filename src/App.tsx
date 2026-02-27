@@ -184,90 +184,88 @@ export default function App() {
    };
 
    return (
-      <div className="w-full min-h-screen bg-gray-50 flex items-center justify-center p-4">
-         <div className="w-full max-w-5xl bg-white shadow-2xl rounded-[2.5rem] overflow-hidden flex flex-col md:flex-row border border-gray-100">
-            {/* Left Side: Display Stats */}
-            <div className="w-full md:w-1/3 bg-gray-900 p-8 md:p-10 text-right flex flex-col justify-between">
-               <div>
-                  <div className="text-gray-500 text-xs uppercase tracking-widest mb-1 font-bold">Status</div>
-                  <div className="text-white text-7xl font-bold mb-4 tabular-nums">
-                     {stats.total}
-                     <span className="text-2xl ml-1 text-gray-600">h</span>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                     <div className="text-blue-400 font-bold text-lg">Remain: {stats.remain}h</div>
-                     <div className="text-emerald-400 font-bold">Progress: {stats.percent}%</div>
-                  </div>
+      <div className="w-full min-w-5xl bg-white overflow-hidden flex flex-col md:flex-row">
+         {/* Left Side: Display Stats */}
+         <div className="w-full md:w-1/4 bg-gray-900 p-8 md:p-10 text-right flex flex-col justify-between">
+            <div>
+               <div className="text-gray-500 text-xs uppercase tracking-widest mb-1 font-bold">Status</div>
+               <div className="text-white text-7xl font-bold mb-4 tabular-nums">
+                  {stats.total}
+                  <span className="text-2xl ml-1 text-gray-600">h</span>
                </div>
-
-               <div className="mt-8 pt-8 border-t border-gray-800 text-left">
-                  <button
-                     onClick={resetAll}
-                     className="flex items-center gap-2 text-gray-500 hover:text-red-400 transition-colors text-[10px] uppercase font-bold mb-8 group">
-                     <RotateCcw size={14} className="group-hover:rotate-180 transition-transform duration-500" /> Reset
-                     All Data
-                  </button>
-                  <h3 className="text-gray-500 text-[10px] uppercase font-bold mb-4 tracking-widest">Legend</h3>
-                  <div className="space-y-3">
-                     <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold uppercase">
-                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>{' '}
-                        Core OK
-                     </div>
-                     <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold uppercase">
-                        <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]"></div>{' '}
-                        Core Check (10-16)
-                     </div>
-                     <div className="p-4 bg-gray-800/50 rounded-2xl border border-gray-700/50 mt-4">
-                        <p className="text-[9px] text-gray-400 leading-relaxed font-bold">
-                           * WORK: (DIFF) - 1.0H (Lunch)
-                           <br />
-                           * HALF: (DIFF) + 4.0H
-                           <br />* FULL: Fixed 8.0H
-                        </p>
-                     </div>
-                  </div>
+               <div className="space-y-2 text-sm">
+                  <div className="text-blue-400 font-bold text-lg">Remain: {stats.remain}h</div>
+                  <div className="text-emerald-400 font-bold">Progress: {stats.percent}%</div>
                </div>
             </div>
 
-            {/* Right Side: 2-Week List */}
-            <div className="flex-1 bg-white p-6 md:p-10 overflow-hidden flex flex-col">
-               <div className="flex items-center justify-between mb-8 border-b border-gray-100 pb-4">
-                  <div className="flex items-center gap-2">
-                     <Clock className="text-blue-600" size={20} />
-                     <span className="text-lg font-black text-gray-900 uppercase tracking-tighter">
-                        Bi-Weekly Core Tracker
-                     </span>
+            <div className="mt-8 pt-8 border-t border-gray-800 text-left">
+               <button
+                  onClick={resetAll}
+                  className="flex items-center gap-2 text-gray-500 hover:text-red-400 transition-colors text-[10px] uppercase font-bold mb-8 group">
+                  <RotateCcw size={14} className="group-hover:rotate-180 transition-transform duration-500" /> Reset All
+                  Data
+               </button>
+               <h3 className="text-gray-500 text-[10px] uppercase font-bold mb-4 tracking-widest">Legend</h3>
+               <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold uppercase">
+                     <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>{' '}
+                     Core OK
                   </div>
-                  <div className="text-[10px] font-bold text-gray-400 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
-                     Target: 80.0h
+                  <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold uppercase">
+                     <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]"></div>{' '}
+                     Core Check (10-16)
+                  </div>
+                  <div className="p-4 bg-gray-800/50 rounded-2xl border border-gray-700/50 mt-4">
+                     <p className="text-[9px] text-gray-400 leading-relaxed font-bold">
+                        * WORK: (DIFF) - 1.0H (Lunch)
+                        <br />
+                        * HALF: (DIFF) + 4.0H
+                        <br />* FULL: Fixed 8.0H
+                     </p>
+                  </div>
+               </div>
+            </div>
+         </div>
+
+         {/* Right Side: 2-Week List */}
+         <div className="flex-1 bg-white p-6 md:p-10 overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between mb-8 border-b border-gray-100 pb-4">
+               <div className="flex items-center gap-2">
+                  <Clock className="text-blue-600" size={20} />
+                  <span className="text-lg font-black text-gray-900 uppercase tracking-tighter">
+                     Bi-Weekly Core Tracker
+                  </span>
+               </div>
+               <div className="text-[10px] font-bold text-gray-400 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+                  Target: 80.0h
+               </div>
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-6 overflow-y-auto pr-2 custom-scrollbar max-h-[600px]">
+               {/* Week 1 */}
+               <div className="flex-1">
+                  <div className="flex items-center justify-between mb-4 px-2">
+                     <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Week 1</h4>
+                     <div className="h-px bg-gray-100 flex-1 ml-4"></div>
+                  </div>
+                  <div className="bg-gray-50/30 rounded-3xl border border-gray-100 overflow-hidden">
+                     {week1.map((log) => (
+                        <LogItem key={log.id} log={log} />
+                     ))}
                   </div>
                </div>
 
-               <div className="flex flex-col md:flex-row gap-6 overflow-y-auto pr-2 custom-scrollbar max-h-[600px]">
-                  {/* Week 1 */}
-                  <div className="flex-1">
-                     <div className="flex items-center justify-between mb-4 px-2">
-                        <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Week 1</h4>
-                        <div className="h-px bg-gray-100 flex-1 ml-4"></div>
-                     </div>
-                     <div className="bg-gray-50/30 rounded-3xl border border-gray-100 overflow-hidden">
-                        {week1.map((log) => (
-                           <LogItem key={log.id} log={log} />
-                        ))}
-                     </div>
+               {/* Week 2 */}
+               <div className="flex-1">
+                  <div className="flex items-center justify-between mb-4 px-2">
+                     <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Week 2</h4>
+                     <div className="h-px bg-gray-100 flex-1 ml-4"></div>
                   </div>
-
-                  {/* Week 2 */}
-                  <div className="flex-1">
-                     <div className="flex items-center justify-between mb-4 px-2">
-                        <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Week 2</h4>
-                        <div className="h-px bg-gray-100 flex-1 ml-4"></div>
-                     </div>
-                     <div className="bg-gray-50/30 rounded-3xl border border-gray-100 overflow-hidden">
-                        {week2.map((log) => (
-                           <LogItem key={log.id} log={log} />
-                        ))}
-                     </div>
+                  <div className="bg-gray-50/30 rounded-3xl border border-gray-100 overflow-hidden">
+                     {week2.map((log) => (
+                        <LogItem key={log.id} log={log} />
+                     ))}
                   </div>
                </div>
             </div>
