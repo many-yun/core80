@@ -1,10 +1,8 @@
-import React, { useState, useMemo } from 'react';
-import { AlertCircle, CheckCircle2, Clock, RotateCcw, LogIn, LogOut } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { LogIn, LogOut, RotateCcw, CheckCircle2, Circle } from 'lucide-react';
 
-// --- Constants ---
-const CORE_START = '10:00';
-const CORE_END = '16:00';
 const TARGET_HOURS = 80;
+const WEEK_TARGET = 40;
 
 type LogType = 'work' | 'half' | 'full';
 
@@ -18,164 +16,142 @@ interface WorkLog {
 
 const calculateHours = (log: WorkLog): number => {
    if (log.type === 'full') return 8;
-
+   if (!log.start || !log.end) return 0;
    const [sH, sM] = log.start.split(':').map(Number);
    const [eH, eM] = log.end.split(':').map(Number);
-   const diffMinutes = eH * 60 + eM - (sH * 60 + sM);
-   let workedHours = diffMinutes / 60;
-
-   if (log.type === 'work') {
-      // 일반 근무: 점심시간 1시간 제외 (최소 0시간 보장)
-      workedHours = Math.max(0, workedHours - 1);
-   } else if (log.type === 'half') {
-      // 반차: 실제 근무 시간 + 4시간 (반차는 점심시간 제외 로직을 보통 포함하지 않거나 이미 퇴근/출근으로 처리됨)
-      workedHours = workedHours + 4;
-   }
-
-   return Math.max(0, workedHours);
+   const diff = (eH * 60 + eM - (sH * 60 + sM)) / 60;
+   if (log.type === 'half') return Math.max(0, diff) + 4;
+   return Math.max(0, diff - 1);
 };
 
-const isCoreOk = (log: WorkLog): boolean => {
-   if (log.type === 'full') return true;
-   return log.start <= CORE_START && log.end >= CORE_END;
+const nowStr = () => {
+   const d = new Date();
+   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
-const getCurrentTime = () => {
-   const now = new Date();
-   return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-};
+const todayStr = () => new Date().toISOString().split('T')[0];
 
-const getTodayString = () => new Date().toISOString().split('T')[0];
-
-const generateInitialLogs = (): WorkLog[] => {
+const generateLogs = (): WorkLog[] => {
    const logs: WorkLog[] = [];
-   const startDay = new Date();
-   // 이번 주 월요일 찾기
-   startDay.setDate(startDay.getDate() - (startDay.getDay() === 0 ? 6 : startDay.getDay() - 1));
-
-   let count = 0;
-   const current = new Date(startDay);
-
-   while (count < 10) {
-      if (current.getDay() !== 0 && current.getDay() !== 6) {
+   const d = new Date();
+   d.setDate(d.getDate() - (d.getDay() === 0 ? 6 : d.getDay() - 1));
+   while (logs.length < 10) {
+      if (d.getDay() !== 0 && d.getDay() !== 6) {
          logs.push({
             id: crypto.randomUUID(),
-            date: current.toISOString().split('T')[0],
-            start: '08:00',
-            end: '17:00',
+            date: d.toISOString().split('T')[0],
+            start: '09:00',
+            end: '18:00',
             type: 'work',
          });
-         count++;
       }
-      current.setDate(current.getDate() + 1);
+      d.setDate(d.getDate() + 1);
    }
    return logs;
 };
 
+const TYPE_LABELS: Record<LogType, string> = { work: '근무', half: '반차', full: '연차' };
+const DAY_KR = ['일', '월', '화', '수', '목', '금', '토'];
+
 export default function App() {
-   const [logs, setLogs] = useState<WorkLog[]>(generateInitialLogs());
-   const today = getTodayString();
+   const [logs, setLogs] = useState<WorkLog[]>(generateLogs);
+   const today = todayStr();
 
    const stats = useMemo(() => {
-      const total = logs.reduce((acc, log) => acc + calculateHours(log), 0);
+      const total = logs.reduce((a, l) => a + calculateHours(l), 0);
+      const w1 = logs.slice(0, 5).reduce((a, l) => a + calculateHours(l), 0);
+      const w2 = logs.slice(5, 10).reduce((a, l) => a + calculateHours(l), 0);
       return {
          total: total.toFixed(1),
          remain: Math.max(0, TARGET_HOURS - total).toFixed(1),
-         percent: Math.min(100, (total / TARGET_HOURS) * 100).toFixed(0),
+         pct: Math.min(100, (total / TARGET_HOURS) * 100),
+         w1Done: w1 >= WEEK_TARGET,
+         w2Done: w2 >= WEEK_TARGET,
+         w1h: w1.toFixed(1),
+         w2h: w2.toFixed(1),
       };
    }, [logs]);
 
-   const updateLog = (id: string, updates: Partial<WorkLog>) => {
-      setLogs(logs.map((log) => (log.id === id ? { ...log, ...updates } : log)));
-   };
-
-   const resetAll = () => {
-      if (window.confirm('모든 기록을 초기 상태로 되돌리시겠습니까?')) {
-         setLogs(generateInitialLogs());
-      }
-   };
+   const update = (id: string, u: Partial<WorkLog>) => setLogs(logs.map((l) => (l.id === id ? { ...l, ...u } : l)));
 
    const week1 = logs.slice(0, 5);
    const week2 = logs.slice(5, 10);
 
-   const LogItem = ({ log }: { log: WorkLog }) => {
+   const barColor = stats.pct >= 100 ? 'bg-green-500' : stats.pct >= 60 ? 'bg-blue-500' : 'bg-amber-400';
+   const remainColor = stats.pct >= 100 ? 'text-green-400' : stats.pct >= 60 ? 'text-blue-400' : 'text-amber-400';
+
+   const Row = ({ log }: { log: WorkLog }) => {
       const isToday = log.date === today;
+      const day = DAY_KR[new Date(log.date + 'T00:00:00').getDay()];
+      const hrs = calculateHours(log);
 
       return (
          <div
-            className={`p-3 group transition-colors border-b border-gray-100 last:border-0 ${isToday ? 'bg-blue-50/30' : 'hover:bg-gray-50'}`}>
-            <div className="flex items-center justify-between mb-2">
-               <div className="flex items-center gap-2">
-                  <span className={`text-[10px] font-bold ${isToday ? 'text-blue-600' : 'text-gray-400'}`}>
-                     {log.date} {isToday && '(오늘)'}
-                  </span>
-               </div>
-               <div className="flex gap-1">
+            className={`px-2.5 py-1.5 border-b border-slate-100 last:border-0 border-l-2 transition-colors ${isToday ? 'bg-blue-50 border-l-blue-500' : 'hover:bg-slate-50 border-l-transparent'}`}>
+            {/* Line 1: date + type pills */}
+            <div className="flex items-center justify-between mb-1">
+               <span className={`text-[10px] font-bold ${isToday ? 'text-blue-600' : 'text-slate-400'}`}>
+                  {log.date.slice(5)} <span className="opacity-60">{day}</span>
+                  {isToday && <span className="ml-1 text-blue-400">▶</span>}
+               </span>
+               <div className="flex gap-0.5">
                   {(['work', 'half', 'full'] as LogType[]).map((t) => (
                      <button
                         key={t}
-                        onClick={() => updateLog(log.id, { type: t })}
-                        className={`px-1.5 py-0.5 rounded text-[9px] uppercase font-bold transition-colors ${
-                           log.type === t ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                        onClick={() => update(log.id, { type: t })}
+                        className={`px-1.5 py-px rounded text-[9px] font-bold border-none cursor-pointer transition-colors ${
+                           log.type === t ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
                         }`}>
-                        {t === 'work' ? '근무' : t === 'half' ? '반차' : '연차'}
+                        {TYPE_LABELS[t]}
                      </button>
                   ))}
                </div>
             </div>
 
-            <div className="flex items-center gap-2">
-               {log.type !== 'full' ? (
+            {/* Line 2: time inputs + hours */}
+            <div className="flex items-center gap-1.5">
+               {log.type === 'full' ? (
+                  <div className="flex-1 text-center text-[10px] font-bold text-slate-400 bg-slate-100 rounded py-1">
+                     연차 — 8.0h
+                  </div>
+               ) : (
                   <div
-                     className={`flex-1 flex items-center rounded-md px-2 py-1 border transition-all ${log.type === 'half' ? 'bg-blue-50/50 border-blue-100' : 'bg-white border-gray-200 shadow-sm'}`}>
+                     className={`flex flex-1 items-center gap-1 rounded px-2 py-1 border ${
+                        log.type === 'half' ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-200'
+                     }`}>
                      <input
                         type="time"
                         value={log.start}
-                        onChange={(e) => updateLog(log.id, { start: e.target.value })}
-                        className="bg-transparent w-full text-xs outline-none font-bold"
+                        onChange={(e) => update(log.id, { start: e.target.value })}
+                        className="bg-transparent border-none outline-none text-xs font-semibold text-slate-800 w-24"
                      />
-                     <span className="mx-1 text-gray-300 text-[10px]">~</span>
+                     <span className="text-slate-300 text-[10px]">~</span>
                      <input
                         type="time"
                         value={log.end}
-                        onChange={(e) => updateLog(log.id, { end: e.target.value })}
-                        className="bg-transparent w-full text-xs outline-none font-bold"
+                        onChange={(e) => update(log.id, { end: e.target.value })}
+                        className="bg-transparent border-none outline-none text-xs font-semibold text-slate-800 w-24"
                      />
                   </div>
-               ) : (
-                  <div className="flex-1 flex items-center justify-center bg-gray-900 text-white rounded-md py-1 text-xs font-bold">
-                     Full Day Off (8.0h)
-                  </div>
                )}
-
-               <div className="w-8 text-right flex flex-col items-end">
-                  <span className="text-xs font-bold">{calculateHours(log).toFixed(1)}</span>
-                  {log.type === 'half' && <span className="text-[8px] text-blue-500 font-bold leading-none">+4h</span>}
-                  {log.type === 'work' && (
-                     <span className="text-[8px] text-gray-400 font-bold leading-none">-1h L</span>
-                  )}
-               </div>
-
-               <div className="w-4 flex justify-center">
-                  {isCoreOk(log) ? (
-                     <CheckCircle2 size={14} className="text-emerald-500" />
-                  ) : (
-                     <AlertCircle size={14} className="text-amber-500" />
-                  )}
-               </div>
+               <span
+                  className={`text-xs font-bold min-w-[30px] text-right tabular-nums ${hrs > 0 ? 'text-slate-800' : 'text-slate-300'}`}>
+                  {hrs > 0 ? `${hrs.toFixed(1)}h` : '—'}
+               </span>
             </div>
 
+            {/* Line 3: clock buttons (today only) */}
             {isToday && log.type !== 'full' && (
-               <div className="flex gap-2 mt-2">
+               <div className="flex gap-1.5 mt-1.5">
                   <button
-                     onClick={() => updateLog(log.id, { start: getCurrentTime() })}
-                     className="flex-1 flex items-center justify-center gap-1 py-1 rounded-md bg-white border border-gray-200 text-[10px] font-bold text-gray-600 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm">
-                     <LogIn size={12} /> 출근
+                     onClick={() => update(log.id, { start: nowStr() })}
+                     className="flex flex-1 items-center justify-center gap-1 py-0.5 rounded border border-slate-200 text-[10px] font-bold cursor-pointer bg-white text-slate-500 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all">
+                     <LogIn size={10} /> 출근
                   </button>
                   <button
-                     onClick={() => updateLog(log.id, { end: getCurrentTime() })}
-                     className="flex-1 flex items-center justify-center gap-1 py-1 rounded-md bg-white border border-gray-100 text-[10px] font-bold text-gray-600 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm">
-                     <LogOut size={12} /> 퇴근
+                     onClick={() => update(log.id, { end: nowStr() })}
+                     className="flex flex-1 items-center justify-center gap-1 py-0.5 rounded border border-slate-200 text-[10px] font-bold cursor-pointer bg-white text-slate-500 hover:bg-green-600 hover:text-white hover:border-green-600 transition-all">
+                     <LogOut size={10} /> 퇴근
                   </button>
                </div>
             )}
@@ -184,91 +160,65 @@ export default function App() {
    };
 
    return (
-      <div className="w-full min-w-5xl bg-white overflow-hidden flex flex-col md:flex-row">
-         {/* Left Side: Display Stats */}
-         <div className="w-full md:w-1/4 bg-gray-900 p-8 md:p-10 text-right flex flex-col justify-between">
-            <div>
-               <div className="text-gray-500 text-xs uppercase tracking-widest mb-1 font-bold">Status</div>
-               <div className="text-white text-7xl font-bold mb-4 tabular-nums">
-                  {stats.total}
-                  <span className="text-2xl ml-1 text-gray-600">h</span>
-               </div>
-               <div className="space-y-2 text-sm">
-                  <div className="text-blue-400 font-bold text-lg">Remain: {stats.remain}h</div>
-                  <div className="text-emerald-400 font-bold">Progress: {stats.percent}%</div>
-               </div>
+      <div className="w-full min-w-140 bg-white font-sans text-sm text-slate-800">
+         {/* Top stats bar */}
+         <div className="flex items-center gap-2 px-3 py-2 bg-slate-900 text-white">
+            <div className="flex items-baseline gap-1 shrink-0">
+               <span className="text-base font-black tabular-nums">{stats.total}</span>
+               <span className="text-[10px] text-slate-500 font-bold">/ {TARGET_HOURS}h</span>
             </div>
-
-            <div className="mt-8 pt-8 border-t border-gray-800 text-left">
-               <button
-                  onClick={resetAll}
-                  className="flex items-center gap-2 text-gray-500 hover:text-red-400 transition-colors text-[10px] uppercase font-bold mb-8 group">
-                  <RotateCcw size={14} className="group-hover:rotate-180 transition-transform duration-500" /> Reset All
-                  Data
-               </button>
-               <h3 className="text-gray-500 text-[10px] uppercase font-bold mb-4 tracking-widest">Legend</h3>
-               <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold uppercase">
-                     <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>{' '}
-                     Core OK
-                  </div>
-                  <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold uppercase">
-                     <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]"></div>{' '}
-                     Core Check (10-16)
-                  </div>
-                  <div className="p-4 bg-gray-800/50 rounded-2xl border border-gray-700/50 mt-4">
-                     <p className="text-[9px] text-gray-400 leading-relaxed font-bold">
-                        * WORK: (DIFF) - 1.0H (Lunch)
-                        <br />
-                        * HALF: (DIFF) + 4.0H
-                        <br />* FULL: Fixed 8.0H
-                     </p>
-                  </div>
-               </div>
+            <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+               <div
+                  className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                  style={{ width: `${stats.pct}%` }}
+               />
             </div>
+            <span className={`text-[10px] font-bold shrink-0 ${remainColor}`}>{stats.remain}h 남음</span>
+            <button
+               onClick={() => window.confirm('초기화하시겠습니까?') && setLogs(generateLogs())}
+               className="text-slate-600 hover:text-red-400 transition-colors shrink-0 bg-transparent border-none cursor-pointer p-0 flex">
+               <RotateCcw size={12} />
+            </button>
          </div>
 
-         {/* Right Side: 2-Week List */}
-         <div className="flex-1 bg-white p-6 md:p-10 overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between mb-8 border-b border-gray-100 pb-4">
-               <div className="flex items-center gap-2">
-                  <Clock className="text-blue-600" size={20} />
-                  <span className="text-lg font-black text-gray-900 uppercase tracking-tighter">
-                     Bi-Weekly Core Tracker
-                  </span>
-               </div>
-               <div className="text-[10px] font-bold text-gray-400 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
-                  Target: 80.0h
-               </div>
-            </div>
-
-            <div className="flex flex-col md:flex-row gap-6 overflow-y-auto pr-2 custom-scrollbar max-h-[600px]">
-               {/* Week 1 */}
-               <div className="flex-1">
-                  <div className="flex items-center justify-between mb-4 px-2">
-                     <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Week 1</h4>
-                     <div className="h-px bg-gray-100 flex-1 ml-4"></div>
-                  </div>
-                  <div className="bg-gray-50/30 rounded-3xl border border-gray-100 overflow-hidden">
-                     {week1.map((log) => (
-                        <LogItem key={log.id} log={log} />
+         {/* Week columns */}
+         <div className="flex border-t border-slate-100">
+            {([week1, week2] as WorkLog[][]).map((week, i) => {
+               const done = i === 0 ? stats.w1Done : stats.w2Done;
+               const wh = i === 0 ? stats.w1h : stats.w2h;
+               return (
+                  <div key={i} className={`flex-1 min-w-0 ${i === 0 ? 'border-r border-slate-100' : ''}`}>
+                     {/* Week header */}
+                     <div className="flex items-center justify-between px-2.5 py-1.5 bg-slate-50 border-b border-slate-100">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                           Week {i + 1}
+                        </span>
+                        <div className="flex items-center gap-1">
+                           <span className={`text-[10px] font-bold ${done ? 'text-green-600' : 'text-slate-400'}`}>
+                              {wh}h
+                           </span>
+                           {done ? (
+                              <CheckCircle2 size={13} className="text-green-500" />
+                           ) : (
+                              <Circle size={13} className="text-slate-300" />
+                           )}
+                        </div>
+                     </div>
+                     {week.map((log) => (
+                        <Row key={log.id} log={log} />
                      ))}
                   </div>
-               </div>
+               );
+            })}
+         </div>
 
-               {/* Week 2 */}
-               <div className="flex-1">
-                  <div className="flex items-center justify-between mb-4 px-2">
-                     <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Week 2</h4>
-                     <div className="h-px bg-gray-100 flex-1 ml-4"></div>
-                  </div>
-                  <div className="bg-gray-50/30 rounded-3xl border border-gray-100 overflow-hidden">
-                     {week2.map((log) => (
-                        <LogItem key={log.id} log={log} />
-                     ))}
-                  </div>
-               </div>
-            </div>
+         {/* Footer */}
+         <div className="flex items-center gap-2 px-2.5 py-1 border-t border-slate-100 bg-slate-50 text-[9px] text-slate-400 font-bold">
+            <CheckCircle2 size={10} className="text-green-500" />
+            <span>주 40h 달성</span>
+            <Circle size={10} className="text-slate-300" />
+            <span>미달성</span>
+            <span className="ml-auto opacity-50">근무 -1h 점심 · 반차 +4h</span>
          </div>
       </div>
    );
