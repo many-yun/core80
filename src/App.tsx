@@ -61,7 +61,11 @@ const nowStr = () => {
    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
-const todayStr = () => new Date().toISOString().split('T')[0];
+// toISOString()은 UTC 기준이라 한국 시간에서 날짜가 밀릴 수 있음 → 로컬 기준으로 처리
+const toLocalDateStr = (d: Date): string =>
+   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const todayStr = () => toLocalDateStr(new Date());
 
 const generateLogs = (): WorkLog[] => {
    const logs: WorkLog[] = [];
@@ -71,7 +75,7 @@ const generateLogs = (): WorkLog[] => {
       if (d.getDay() !== 0 && d.getDay() !== 6) {
          logs.push({
             id: crypto.randomUUID(),
-            date: d.toISOString().split('T')[0],
+            date: toLocalDateStr(d),
             start: '09:00',
             end: '18:00',
             type: 'work',
@@ -96,10 +100,15 @@ export default function App() {
       storage
          .get(STORE_KEY)
          .then((saved) => {
+            // 항상 현재 날짜 기준 10개 슬롯을 생성 후, 저장된 데이터를 날짜로 매칭해 덮어씀
+            // → 요일 누락 없이 항상 정확한 2주치 목록을 보여줌
+            const fresh = generateLogs();
             if (Array.isArray(saved) && saved.length > 0) {
-               setLogs(saved as WorkLog[]);
+               const savedMap = new Map((saved as WorkLog[]).map((l) => [l.date, l]));
+               const merged = fresh.map((l) => savedMap.get(l.date) ?? l);
+               setLogs(merged);
             } else {
-               setLogs(generateLogs());
+               setLogs(fresh);
             }
          })
          .catch(() => {
