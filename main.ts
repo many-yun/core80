@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import Store from 'electron-store';
+const store = new Store();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const store = new Store();
